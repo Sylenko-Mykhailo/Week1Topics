@@ -1,6 +1,6 @@
-﻿using System;
+﻿namespace Type_system;
 
-public class InternshipProject
+public class Type_system
 {
     public static void Main(string[] args)
     {
