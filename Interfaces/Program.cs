@@ -2,10 +2,8 @@
 
 public class Program
 {
-    // This method accepts any object that implements ILogger
     public static void ProcessLog(ILogger logger)
     {
-        //logger.LogMessage("This is a polymorphic log message."); //private
         Console.WriteLine($"Max log size is: {logger.MaxLogSize} bytes.");
     }
 
