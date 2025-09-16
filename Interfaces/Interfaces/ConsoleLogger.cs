@@ -2,7 +2,7 @@
 {
     public class ConsoleLogger : ILogger
     {
-        public void LogMessage(string message)
+        private void LogMessage(string message)
         {
             Console.WriteLine($"[Console Log]: {message}");
         }

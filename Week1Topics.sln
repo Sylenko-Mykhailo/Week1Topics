@@ -28,6 +28,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Switch", "Switch\Switch.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "String", "String\String.csproj", "{A018884C-C35F-4A3F-8CE0-C3443A5DD856}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Events", "Events\Events.csproj", "{5E39D372-DD24-48E0-A816-5DC62AA8C0AD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -90,5 +92,9 @@ Global
 		{A018884C-C35F-4A3F-8CE0-C3443A5DD856}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A018884C-C35F-4A3F-8CE0-C3443A5DD856}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A018884C-C35F-4A3F-8CE0-C3443A5DD856}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E39D372-DD24-48E0-A816-5DC62AA8C0AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E39D372-DD24-48E0-A816-5DC62AA8C0AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E39D372-DD24-48E0-A816-5DC62AA8C0AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E39D372-DD24-48E0-A816-5DC62AA8C0AD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
