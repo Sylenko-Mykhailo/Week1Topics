@@ -25,7 +25,6 @@ namespace Switch
                     break;
             }
             Console.WriteLine("Switch Statement Ended");
-            Console.ReadKey();
         }
     }
 }
