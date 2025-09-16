@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Loops", "Loops\Loops.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Enums", "Enums\Enums.csproj", "{40E11B90-29D1-41F1-89CA-5B28ED710E74}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tuples", "Tuples\Tuples.csproj", "{4F9196E4-D95E-4776-9083-2B74D96E857B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,5 +68,9 @@ Global
 		{40E11B90-29D1-41F1-89CA-5B28ED710E74}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{40E11B90-29D1-41F1-89CA-5B28ED710E74}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{40E11B90-29D1-41F1-89CA-5B28ED710E74}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4F9196E4-D95E-4776-9083-2B74D96E857B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4F9196E4-D95E-4776-9083-2B74D96E857B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4F9196E4-D95E-4776-9083-2B74D96E857B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4F9196E4-D95E-4776-9083-2B74D96E857B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
