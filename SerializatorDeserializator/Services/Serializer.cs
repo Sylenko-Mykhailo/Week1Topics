@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+﻿﻿using System.Reflection;
 using System.Text;
 
 using SerializatorDeserializator.Attributes;
@@ -17,14 +17,19 @@ public class Serializer<T> : Interfaces.ISerializer<T>
     public void Serialize(List<T> objects)
     {
         var stringBuilder = new StringBuilder();
-
+        
+        char[] tempBuffer = new char[1024]; 
+    
         foreach (var obj in objects)
         {
-            Span<char> span = stackalloc char[128]; 
-
-            var charsWritten = Stringify(obj, span);
-            stringBuilder.AppendLine(new string(span[..charsWritten]));
+            Span<char> buffer = tempBuffer.AsSpan();
+        
+            var charsWritten = Stringify(obj, buffer);
+            
+            stringBuilder.Append(buffer[..charsWritten]);
+            stringBuilder.AppendLine();
         }
+    
         File.WriteAllText(filePath, stringBuilder.ToString());
     }
 
@@ -62,19 +67,26 @@ public class Serializer<T> : Interfaces.ISerializer<T>
     {
         var attribute = prop.GetCustomAttribute<SerializationName>();
         var name = attribute != null ? attribute.Name : prop.Name;
-        var value = prop.GetValue(obj)?.ToString();
+        var value = prop.GetValue(obj)?.ToString() ?? string.Empty; 
+
+        if (position + name.Length + 1 > span.Length)
+        {
+            throw new InvalidOperationException("Buffer too small for serializing property name.");
+        }
     
         name.CopyTo(span.Slice(position));
-        
         position += name.Length;
-    
+
         span[position++] = ':';
 
-        if (value != null)
+        if (position + value.Length > span.Length)
         {
-            value.CopyTo(span.Slice(position));
-            position += value.Length;
+            throw new InvalidOperationException("Buffer too small for serializing property value.");
         }
-        return name.Length + 1 + (value?.Length ?? 0);
+    
+        value.CopyTo(span.Slice(position));
+        position += value.Length;
+    
+        return name.Length + 1 + value.Length;
     }
 }

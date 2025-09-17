@@ -14,7 +14,16 @@ public class Deserializer<T> : Interfaces.IDeserializer<T> where T : new()
     public List<T> Deserialize()
     {
         var objects = new List<T>();
-        ReadOnlySpan<char> span = File.ReadAllText(filepath);
+        ReadOnlySpan<char> span;
+        try
+        {
+            span = File.ReadAllText(filepath).AsSpan();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reading file: {ex.Message}");
+            return objects;
+        }
         
         while (!span.IsEmpty)
         {
@@ -41,11 +50,17 @@ public class Deserializer<T> : Interfaces.IDeserializer<T> where T : new()
         var obj = new T();
         var properties = typeof(T).GetProperties();
 
-        var orderedProperties = properties.Where(p =>
+        var propertiesToSerialize = properties.Where(p =>
         {
-            var attribute = p.GetCustomAttribute<SerializeProperty>();
-            return attribute != null;
-        }).OrderBy(p => p.GetCustomAttribute<SerializationOrder>().Order).ToList();
+            var isToSerialize = p.GetCustomAttribute<SerializeProperty>();
+            return isToSerialize != null;
+        }).ToList();
+        
+        var orderedProperties = propertiesToSerialize.OrderBy(p =>
+        {
+            var orderAttribute = p.GetCustomAttribute<SerializationOrder>();
+            return orderAttribute?.Order ?? int.MaxValue;
+        }).ToList();
         
         var remainingSpan = line;
         
@@ -55,9 +70,23 @@ public class Deserializer<T> : Interfaces.IDeserializer<T> where T : new()
             var segment = commaIndex == -1 ? remainingSpan : remainingSpan.Slice(0, commaIndex);
             
             var colonIndex = segment.IndexOf(':');
-            var valueSegment = colonIndex == -1 ? segment : segment.Slice(colonIndex + 1);
-            var value = Convert.ChangeType(valueSegment.ToString(), property.PropertyType);
-            property.SetValue(obj, value);
+            if (colonIndex == -1)
+            {
+                Console.WriteLine($"No ':' for property {property.Name}");
+                if (commaIndex == -1) break;
+                remainingSpan = remainingSpan.Slice(commaIndex + 1);
+                continue;
+            }
+            var valueSegment = segment.Slice(colonIndex + 1);
+            try
+            {
+                var value = Convert.ChangeType(valueSegment.ToString(), property.PropertyType);
+                property.SetValue(obj, value);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($" impossible to deserialize '{valueSegment}' for property {property.Name}: {ex.Message}");
+            }
             
             if (commaIndex == -1) break;
             remainingSpan = remainingSpan.Slice(commaIndex + 1);
