@@ -1,10 +1,11 @@
 ﻿using System.Reflection;
 using System.Text;
+
 using SerializatorDeserializator.Attributes;
 
 namespace SerializatorDeserializator.Services;
 
-public class Serializer<T>
+public class Serializer<T> : Interfaces.ISerializer<T>
 {
     public string filePath { get; set; }
 
@@ -31,11 +32,17 @@ public class Serializer<T>
     {
         var properties = typeof(T).GetProperties();
         
-        var orderedProperties = properties.Where(p =>
+        var propertiesToSerialize = properties.Where(p =>
         {
-            var attribute = p.GetCustomAttribute<SerializeProperty>();
-            return attribute != null;
-        }).OrderBy(p => p.GetCustomAttribute<SerializationOrder>().Order).ToList();
+            var isToSerialize = p.GetCustomAttribute<SerializeProperty>();
+            return isToSerialize != null;
+        }).ToList();
+        
+        var orderedProperties = propertiesToSerialize.OrderBy(p =>
+        {
+            var orderAttribute = p.GetCustomAttribute<SerializationOrder>();
+            return orderAttribute?.Order ?? int.MaxValue;
+        }).ToList();
         
         int position = 0;
         

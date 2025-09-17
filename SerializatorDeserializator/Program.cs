@@ -12,9 +12,10 @@ using SerializatorDeserializator.Services;
 // var serializer = new Serializer<Person>("people.txt");
 // serializer.Serialize(list);
 
-var deserializer = new Deserializer<Person>("people.txt");
-var deserializedList = deserializer.Deserialize();
-foreach (var person in deserializedList)
-{
-    Console.WriteLine($"Id: {person.Id}, Name: {person.Name}, Age: {person.Age}, Email: {person.Email}");
-}
+// var deserializer = new Deserializer<Person>("people.txt");
+// var deserializedList = deserializer.Deserialize();
+// foreach (var person in deserializedList)
+// {
+//     Console.WriteLine($"Id: {person.Id}, Name: {person.Name}, Age: {person.Age}, Email: {person.Email}");
+// }
+

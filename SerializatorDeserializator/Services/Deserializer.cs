@@ -3,7 +3,7 @@ using SerializatorDeserializator.Attributes;
 
 namespace SerializatorDeserializator.Services;
 
-public class Deserializer<T> where T : new()
+public class Deserializer<T> : Interfaces.IDeserializer<T> where T : new() 
 {
     public string filepath { get; set; }
     
