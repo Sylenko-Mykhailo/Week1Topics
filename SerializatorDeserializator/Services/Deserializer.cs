@@ -1,97 +1,169 @@
-﻿using System.Reflection;
-using SerializatorDeserializator.Attributes;
+﻿using System.Buffers.Binary;
+using System.Reflection;
+using System.Runtime.Serialization;
+using System.Text;
+using SerializatorDeserializator.Interfaces;
 
 namespace SerializatorDeserializator.Services;
 
-public class Deserializer<T> : Interfaces.IDeserializer<T> where T : new() 
+public class Deserializer<T>(string filePath, ILogger logger)  : IDeserializer<T> where T : new()
 {
-    public string filepath { get; set; }
-    
-    public Deserializer(string filepath)
+    private readonly byte[] _dataBuffer = new byte[2048];
+
+    private string FilePath { get; set; } = filePath;
+
+    public List<T> DeserializeList()
     {
-        this.filepath = filepath;
-    }
-    public List<T> Deserialize()
-    {
-        var objects = new List<T>();
-        ReadOnlySpan<char> span;
-        try
-        {
-            span = File.ReadAllText(filepath).AsSpan();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error reading file: {ex.Message}");
-            return objects;
-        }
-        
-        while (!span.IsEmpty)
-        {
-            var endOfLineIndex = span.IndexOf('\n');
-            if (endOfLineIndex == -1)
-            {
-                endOfLineIndex = span.Length;
-            }
+        var list = new List<T>();
+        using var fs = new FileStream(FilePath, FileMode.Open);
+        var propertiesInfo = ReadProperties(fs);
 
-            var lineSpan = span.Slice(0, endOfLineIndex);
-            if (!lineSpan.IsEmpty)
-            {
-                objects.Add(Parse(lineSpan));
-            }
-
-            span = span.Slice(endOfLineIndex + 1);
+        while (fs.Position < fs.Length)
+        {
+            var obj = ReadValues(fs, propertiesInfo);
+            list.Add(obj);
         }
 
-        return objects;
+        return list;
     }
 
-    private T Parse(ReadOnlySpan<char> line)
+    private List<(string name, Type type)> ReadProperties(FileStream fs)
     {
-        var obj = new T();
-        var properties = typeof(T).GetProperties();
+        var properties = new List<(string name, Type type)>();
 
-        var propertiesToSerialize = properties.Where(p =>
+        var buffer = _dataBuffer.AsSpan(0, 4);
+        fs.ReadExactly(buffer);
+        var count = BinaryPrimitives.ReadInt32LittleEndian(buffer);
+        logger.Log($"Reading metadata for {count} properties.");
+
+        for (var i = 0; i < count; i++)
         {
-            var isToSerialize = p.GetCustomAttribute<SerializeProperty>();
-            return isToSerialize != null;
-        }).ToList();
-        
-        var orderedProperties = propertiesToSerialize.OrderBy(p =>
-        {
-            var orderAttribute = p.GetCustomAttribute<SerializationOrder>();
-            return orderAttribute?.Order ?? int.MaxValue;
-        }).ToList();
-        
-        var remainingSpan = line;
-        
-        foreach (var property in orderedProperties)
-        {
-            var commaIndex = remainingSpan.IndexOf(',');
-            var segment = commaIndex == -1 ? remainingSpan : remainingSpan.Slice(0, commaIndex);
-            
-            var colonIndex = segment.IndexOf(':');
-            if (colonIndex == -1)
+            fs.ReadExactly(buffer);
+            var propSize = BinaryPrimitives.ReadInt32LittleEndian(buffer);
+            Array.Clear(_dataBuffer, 0, _dataBuffer.Length);
+
+            var propInfoBuffer = _dataBuffer.AsSpan(0, propSize);
+            fs.ReadExactly(propInfoBuffer);
+
+            var offset = 0;
+
+            // Read property name
+            var nameSize = BinaryPrimitives.ReadInt32LittleEndian(propInfoBuffer.Slice(offset, 4));
+            offset += 4;
+            var nameBytes = propInfoBuffer.Slice(offset, nameSize);
+            offset += nameSize;
+            var propName = Encoding.UTF8.GetString(nameBytes);
+
+            // Read a property type
+            var typeCode = BinaryPrimitives.ReadInt32LittleEndian(propInfoBuffer.Slice(offset, 4));
+            Array.Clear(_dataBuffer, 0, _dataBuffer.Length);
+
+            Type propType;
+            switch (typeCode)
             {
-                Console.WriteLine($"No ':' for property {property.Name}");
-                if (commaIndex == -1) break;
-                remainingSpan = remainingSpan.Slice(commaIndex + 1);
+                case 0: propType = typeof(string); break;
+                case 1: propType = typeof(int); break;
+                case 2: propType = typeof(double); break;
+                case 3: propType = typeof(float); break;
+                case 4: propType = typeof(bool); break;
+                default:
+                    logger.Log($"Unsupported type code {typeCode} for property '{propName}', skipping.");
+                    throw new NotSupportedException($"Type code {typeCode} is not supported.");
+            }
+
+            logger.Log($"Property '{propName}' of type {propType.Name} read from metadata.");
+            properties.Add((propName, propType));
+        }
+
+        return properties;
+    }
+
+    private T ReadValues(FileStream fs, List<(string name, Type type)> propertiesInfo)
+    {
+        var obj = (T)FormatterServices.GetUninitializedObject(typeof(T));
+        var type = typeof(T);
+
+        foreach (var propInfo in propertiesInfo)
+        {
+            var prop = type.GetProperty(propInfo.name, BindingFlags.Public | BindingFlags.Instance);
+            if (prop == null)
+            {
+                var sizeBufferToSkip = _dataBuffer.AsSpan(0, 4);
+                fs.ReadExactly(sizeBufferToSkip);
+                var valueSizeToSkip = BinaryPrimitives.ReadInt32LittleEndian(sizeBufferToSkip);
+                fs.Position += valueSizeToSkip;
+                Array.Clear(_dataBuffer, 0, _dataBuffer.Length);
+                logger.Log(
+                    $"Property '{propInfo.name}' not found in type '{type.Name}', skipped {valueSizeToSkip} bytes.");
                 continue;
             }
-            var valueSegment = segment.Slice(colonIndex + 1);
-            try
+
+            if (propInfo.type != prop.PropertyType &&
+                !(propInfo.type.IsAssignableFrom(prop.PropertyType) ||
+                  prop.PropertyType.IsAssignableFrom(propInfo.type)))
             {
-                var value = Convert.ChangeType(valueSegment.ToString(), property.PropertyType);
-                property.SetValue(obj, value);
+                var sizeBufferToSkip = _dataBuffer.AsSpan(0, 4);
+                fs.ReadExactly(sizeBufferToSkip);
+                var valueSizeToSkip = BinaryPrimitives.ReadInt32LittleEndian(sizeBufferToSkip);
+                fs.Position += valueSizeToSkip;
+                Array.Clear(_dataBuffer, 0, _dataBuffer.Length);
+                logger.Log(
+                    $"Property type mismatch for '{propInfo.name}' (expected {propInfo.type.Name}, found {prop.PropertyType.Name}), skipped {valueSizeToSkip} bytes.");
+                continue;
             }
-            catch (Exception ex)
+
+            var sizeBuffer = _dataBuffer.AsSpan(0, 4);
+            fs.ReadExactly(sizeBuffer);
+            var valueSize = BinaryPrimitives.ReadInt32LittleEndian(sizeBuffer);
+            Array.Clear(_dataBuffer, 0, _dataBuffer.Length);
+
+            object? value = null;
+
+            if (propInfo.type == typeof(string))
             {
-                Console.WriteLine($" impossible to deserialize '{valueSegment}' for property {property.Name}: {ex.Message}");
+                var valueBytes = _dataBuffer.AsSpan(0, valueSize);
+                fs.ReadExactly(valueBytes);
+                value = Encoding.UTF8.GetString(valueBytes);
+                logger.Log($"Deserialized string property '{propInfo.name}' with length {valueSize}.");
+                Array.Clear(_dataBuffer, 0, _dataBuffer.Length);
             }
-            
-            if (commaIndex == -1) break;
-            remainingSpan = remainingSpan.Slice(commaIndex + 1);
+            else if (propInfo.type == typeof(int))
+            {
+                var valueBuffer = _dataBuffer.AsSpan(0, valueSize);
+                fs.ReadExactly(valueBuffer);
+                value = BinaryPrimitives.ReadInt32LittleEndian(valueBuffer);
+                logger.Log($"Deserialized int property '{propInfo.name}' with value {value}.");
+                Array.Clear(_dataBuffer, 0, _dataBuffer.Length);
+            }
+            else if (propInfo.type == typeof(double))
+            {
+                var valueBuffer = _dataBuffer.AsSpan(0, valueSize);
+                fs.ReadExactly(valueBuffer);
+                value = BinaryPrimitives.ReadDoubleLittleEndian(valueBuffer);
+                logger.Log($"Deserialized double property '{propInfo.name}' with value {value}.");
+                Array.Clear(_dataBuffer, 0, _dataBuffer.Length);
+            }
+            else if (propInfo.type == typeof(float))
+            {
+                var valueBuffer = _dataBuffer.AsSpan(0, valueSize);
+                fs.ReadExactly(valueBuffer);
+                value = BitConverter.ToSingle(valueBuffer);
+                logger.Log($"Deserialized float property '{propInfo.name}' with value {value}.");
+                Array.Clear(_dataBuffer, 0, _dataBuffer.Length);
+            }
+            else if (propInfo.type == typeof(bool))
+            {
+                var valueBuffer = _dataBuffer.AsSpan(0, valueSize);
+                fs.ReadExactly(valueBuffer);
+                value = BitConverter.ToBoolean(valueBuffer);
+                logger.Log($"Deserialized bool property '{propInfo.name}' with value {value}.");
+                Array.Clear(_dataBuffer, 0, _dataBuffer.Length);
+            }
+
+            prop.SetValue(obj, value);
         }
 
+        logger.Log($"Finished deserializing object of type '{typeof(T).Name}'.");
         return obj;
     }
 }

@@ -2,12 +2,15 @@
 
 public interface IDeserializer<T> where T : new()
 {
-    public List<T> Deserialize();
+    public List<T> DeserializeList();
 
-    private T Parse(ReadOnlySpan<char> line)
+    private List<(string name, Type type)> ReadProperties(FileStream fs)
     {
-        return new T();
+        return null;
     }
 
-
+    private T ReadValues(FileStream fs, List<(string name, Type type)> propertiesInfo)
+    {
+        return default;
+    }
 }

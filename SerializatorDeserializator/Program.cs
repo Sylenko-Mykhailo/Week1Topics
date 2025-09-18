@@ -1,21 +1,28 @@
-﻿
-using SerializatorDeserializator.ClassesToSerialize;
+﻿using SerializatorDeserializator.ClassesToSerialize;
 using SerializatorDeserializator.Services;
 
-
-
-var list = new List<Person>()
+var list = new List<Person>
 {
-    new Person { Id = 1, Name = "Alice", Age = 20, Email = "dbcjds@ven.com" },
-    new Person {Id = 2, Name = "Bob", Age = 25, Email = "dbcjds@gmail.com"}
+    new Person( 1, "Alice", 30, "dcdqaCDC", float.Floor(1.23f), Double.E, true),
+    null,
+    new Person( 2, "Bob", 25, "qweqwe", 1.25f, Double.NaN, false),
 };
-var serializer = new Serializer<Person>("people.txt");
-serializer.Serialize(list);
 
-// var deserializer = new Deserializer<Person>("people.txt");
-// var deserializedList = deserializer.Deserialize();
+// // Null value
+// var serializer = new Serializer<Person>("people.bin");
+// serializer.SerializeList(list);
+//
+// var deserializer = new Deserializer<Person>("people.bin");
+// var deserializedList = deserializer.DeserializeList();
 // foreach (var person in deserializedList)
 // {
-//     Console.WriteLine($"Id: {person.Id}, Name: {person.Name}, Age: {person.Age}, Email: {person.Email}");
+//     Console.WriteLine($"Id: {person.Id}, Name: {person.Name}, Email: {person.Email}");
 // }
 
+var serializer = new Serializer<Person>("people.bin", new Logger());
+serializer.SerializeList(list);
+
+var deserializer = new Deserializer<Persan>("people.bin", new Logger());
+var deserializedList = deserializer.DeserializeList();
+foreach (var person in deserializedList)
+    Console.WriteLine(person.ToString());

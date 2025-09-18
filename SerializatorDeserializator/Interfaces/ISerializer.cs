@@ -4,17 +4,17 @@ namespace SerializatorDeserializator.Interfaces;
 
 public interface ISerializer<T>
 {
-    void Serialize(List<T> objects);
+    public void SerializeList(List<T> listToSerialize);
 
-    private int Stringify(T obj, Span<char> span)
+    private Span<byte> SaveValues(T obj)
     {
-        return 0;
+        return null;
+        
     }
 
-    private int CreateSpan(PropertyInfo prop, T obj, Span<char> span, ref int position)
+    private Span<byte> SaveProperties()
     {
-        return 0;
+        return null;
     }
-
 
 }
